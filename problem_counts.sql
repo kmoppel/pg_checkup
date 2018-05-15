@@ -1,3 +1,5 @@
+set session characteristics as transaction read only;
+
 select 'Mio Tx from last FREEZE' as check1;
 
 select
