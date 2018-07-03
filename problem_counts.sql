@@ -182,3 +182,6 @@ ORDER BY count DESC, table_size_bytes DESC, table_name
 LIMIT 100;
 
 
+select 'Inactive replication slots' as check7;
+
+SELECT slot_name FROM pg_replication_slots WHERE NOT active;
