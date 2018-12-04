@@ -139,7 +139,7 @@ FROM (
       JOIN pg_index USING(indexrelid) 
       WHERE NOT indisunique
   ) a
-  WHERE index_size_bytes > 1e7 -- adjust as needed!
+  WHERE index_size_bytes > 1e8 -- adjust as needed!
   AND scans <= 3	-- adjust as needed!
 ) b
 ORDER BY
