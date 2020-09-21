@@ -63,6 +63,7 @@ WITH y AS (
         WHERE i.indrelid = t.conrelid
         AND i.indkey[0] = t.conkey[1]
     )
+    AND pg_table_size(c1.oid) > 1e8 /* > 100 MB */
 )
 SELECT  referencing_tbl,
         referencing_column,
@@ -185,3 +186,20 @@ LIMIT 100;
 select 'Inactive replication slots' as check7;
 
 SELECT slot_name FROM pg_replication_slots WHERE NOT active;
+
+
+select 'Oversized system tables' as check8;
+
+SELECT
+  relname,
+  pg_size_pretty(pg_table_size(oid))
+from
+  pg_class
+where
+  relname like E'pg\\_%'
+  and not relname like E'pg\\_toast%'
+  and pg_table_size(oid) > 1e7
+order by
+  pg_table_size(oid) desc
+limit
+  10;
