@@ -1,7 +1,7 @@
 SELECT
   name,
   category,
-  current_setting(name),
+  case when length(current_setting(name)) < 40 then current_setting(name) else current_setting(name)::varchar(37) || '...' end,
   boot_val,
   unit,
   source
