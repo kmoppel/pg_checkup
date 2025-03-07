@@ -154,8 +154,8 @@ select 'Duplicate indexes' as check6;
 
 SELECT
        n.nspname||'.'||ct.relname AS table_name,
-       pg_size_pretty(pg_total_relation_size(ct.oid)) AS table_size,
-       pg_total_relation_size(ct.oid) AS table_size_bytes,
+       pg_size_pretty(pg_table_size(ct.oid)) AS table_size,
+       pg_table_size(ct.oid) AS table_size_bytes,
        index_names,
        count,
        def as index_definiton
