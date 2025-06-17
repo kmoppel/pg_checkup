@@ -19,6 +19,7 @@ WHERE s.idx_scan = 0      -- has never been scanned
   AND NOT EXISTS          -- does not enforce a constraint
          (SELECT 1 FROM pg_catalog.pg_constraint c
           WHERE c.conindid = s.indexrelid)
+  AND pg_relation_size(s.indexrelid) > 1e8 -- 100M
 ) x
 ) y
 ORDER BY index_size DESC, tablename, indexname;
