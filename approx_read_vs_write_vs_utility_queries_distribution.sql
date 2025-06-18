@@ -24,14 +24,29 @@ q_cmd_tag AS (
 ),
 q_total AS (
   SELECT sum(calls) AS grand_total FROM q_cmd_tag
+),
+q_stats_reset AS (
+  SELECT extract(epoch from now() - stats_reset) AS seconds_from_reset from pg_stat_statements_info
 )
 SELECT
   ct.query_type,
-  ct.calls,
-  (ct.total_exec_time / 1000)::numeric(9,1) as total_exec_time_s,
-  mean_exec_time::numeric(9,1) as mean_exec_time_ms,
+  (ct.calls / 1000)::int AS calls_1k,
+  (ct.calls / sr.seconds_from_reset)::numeric(9,3) AS approx_avg_calls_per_second,
+  (ct.total_exec_time / 1000)::numeric(9,1) AS total_exec_time_s,
+  mean_exec_time::numeric(9,1) AS mean_exec_time_ms,
   (100.0::numeric * ct.calls / t.grand_total)::numeric(7,1) AS percent_of_total_calls
 FROM
-  q_cmd_tag ct, q_total t
+  q_cmd_tag ct, q_total t, q_stats_reset sr
+
+UNION ALL  
+
+SELECT
+  (select 'GRAND TOTAL for last ' || now()::date - stats_reset::date || ' days' from pg_stat_statements_info),
+  (select sum(calls) from q_stat_stmts),
+  ((select sum(calls) from q_stat_stmts) / (select seconds_from_reset from q_stats_reset))::numeric(9, 1), -- total avg calls per second
+  (select sum(total_exec_time) / 1000 from q_stat_stmts)::int8,
+  (select avg(mean_exec_time) from q_stat_stmts)::numeric(9,1),
+  100
+
 ORDER BY
   percent_of_total_calls DESC;
