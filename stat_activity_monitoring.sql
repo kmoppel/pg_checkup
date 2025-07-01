@@ -54,3 +54,29 @@ where
 group by 1
 order by 2 desc
 limit 10;
+
+
+-- avg QPS (approx, due to possible PGSS evictions)
+with q as (
+  select
+    now,
+    sum(rows) rows,
+    sum(calls) calls,
+    avg(mean_exec_time) mean_exec_time
+  from
+    stat_activity_history
+  group by
+    now
+), qt as (
+  select
+    min(now) as t1,
+    max(now) as t2,
+    extract(epoch from max(now) - min(now)) as duration_s
+  from q
+)
+select
+  qt.*,
+  (((select rows from q where now = qt.t2) - (select rows from q where now = qt.t1)) / qt.duration_s)::numeric(12,2) as avg_rows_s,
+  (((select calls from q where now = qt.t2) - (select calls from q where now = qt.t1)) / qt.duration_s)::numeric(12,2) as avg_calls_s,
+  (select avg(mean_exec_time) from q)::numeric(12,2) as avg_mean_exec_time_ms
+from qt ;
