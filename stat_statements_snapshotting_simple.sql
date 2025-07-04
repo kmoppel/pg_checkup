@@ -1,15 +1,23 @@
+-- wants < PG17, columns local_blk_read_time and local_blk_write_time added in 17
+
+create extension if not exists  pg_stat_statements ;
+
+
 create unlogged table pg_stat_statements_snapshots as
-	select now(), dbid, queryid, calls, total_exec_time, mean_exec_time, stddev_exec_time, rows, blk_read_time, blk_write_time, wal_bytes, ltrim(regexp_replace(query, E'[ \\t\\n\\r]+' , ' ', 'g'))::varchar(200) as query
+	select now(), queryid, calls, total_plan_time, total_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read,
+	blk_read_time + blk_write_time as io_time, wal_bytes, jit_generation_time, ltrim(regexp_replace(query, E'[ \\t\\n\\r]+' , ' ', 'g'))::varchar(200) as query
 	from pg_stat_statements where false ;
 
 
 
 insert into pg_stat_statements_snapshots
-  select now(), dbid, queryid, calls, total_exec_time, mean_exec_time, stddev_exec_time, rows,
-    blk_read_time, blk_write_time, wal_bytes, ltrim(regexp_replace(query, E'[ \\t\\n\\r]+' , ' ', 'g'))::varchar(200) as query
-  from pg_stat_statements;
+  select now(), queryid, calls, total_plan_time, total_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read,
+    blk_read_time + blk_write_time as io_time, wal_bytes, jit_generation_time, ltrim(regexp_replace(query, E'[ \\t\\n\\r]+' , ' ', 'g'))::varchar(200) as query
+  from pg_stat_statements
+  where toplevel
+  and mean_exec_time > 0.001 ;
 
--- \watch 300
+-- \watch 600
 
 
 -- mean_exec_time, QPS
@@ -52,7 +60,7 @@ with qt as (
 )
 select
   (100::numeric * total_exec_time / t2_grand_total_exec_time_ms)::numeric(4,2) || ' %' as tot_exec_time,
-  (total_exec_time / 1000)::int as exec_time_s,
+  (total_exec_time / 1000)::numeric(9,1) as total_exec_time_s,
   (calls / 1000)::numeric(9,1) as calls_1k,
   mean_exec_time::numeric(9,1) as mean_time_ms,
   date_trunc('minute', "to" - "from") as stats_window,
