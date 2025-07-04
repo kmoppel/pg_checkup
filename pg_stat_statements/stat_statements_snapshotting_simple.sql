@@ -57,6 +57,7 @@ with qt as (
 	 sum(total_exec_time) as t2_grand_total_exec_time_ms
 	from
 	  pg_stat_statements_snapshots
+	where now = (select max(now) from pg_stat_statements_snapshots)
 )
 select
   (100::numeric * total_exec_time / t2_grand_total_exec_time_ms)::numeric(4,2) || ' %' as tot_exec_time,
@@ -107,3 +108,56 @@ order by
   total_exec_time desc
 limit
   10;
+
+
+-- avg. query runtime "graph"
+
+select
+  -- now,
+  extract(epoch from now)::int as now,
+  avg(mean_exec_time)::numeric(7, 3) as avg_mean_exec_time_ms,
+  sum(calls) as calls
+from (
+
+select
+  now,
+  queryid,
+  (total_exec_time - total_exec_time_lag) / (calls - calls_lag) as mean_exec_time,
+  calls - calls_lag as calls
+from (
+
+select
+  now,
+  lag(now) over (w) as now_lag,
+  calls,
+  lag(calls) over (w) as calls_lag,
+  total_exec_time,
+  lag(total_exec_time) over (w) as total_exec_time_lag,
+  queryid,
+  query
+from (
+
+	select
+	  now,
+	  queryid,
+	  sum(total_exec_time) as total_exec_time,
+	  sum(calls) as calls,
+	  max(query) as query
+    from pg_stat_statements_snapshots
+    -- where query ~ '^UPDATE'
+	group by /* merge per user stats for a query */
+	  now, queryid
+	order by
+	  now, queryid
+
+) x
+window w as (partition by queryid order by now)
+order by
+  now
+
+) y
+where calls > calls_lag
+) z
+group by now
+order by now
+;
