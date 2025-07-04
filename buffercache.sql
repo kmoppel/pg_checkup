@@ -1,19 +1,29 @@
+-- CREATE EXTENSION IF NOT EXISTS pg_buffercache ;
+
+-- From PostgreSQL 16, following functions are also available:
+
+SELECT * FROM pg_buffercache_summary() ;
+
+SELECT * FROM pg_buffercache_usage_counts() ORDER BY buffers DESC LIMIT 20 ;
+
+-- Top relations in SB
 SELECT
-  *,
-  round(buffers / (SUM(buffers) OVER ())::numeric * 100, 1) as pct_from_total
+  d.datname,
+  bc.oid::regclass,
+  (100::numeric * buffers / (select count(*) from pg_buffercache))::numeric(5,2) as pct_from_total,
+  buffers
 FROM (
-SELECT
-  quote_ident(c.relname) ||'.'|| quote_ident(n.nspname) as relation,
-  c.relkind,
-  COUNT(*) AS buffers
-FROM
-  pg_class c
-  JOIN pg_buffercache b ON b.relfilenode=c.relfilenode
-  JOIN pg_database d ON b.reldatabase=d.oid
-  JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE
-  d.datname=current_database()
-GROUP BY
-  1, 2
-) a
-ORDER BY 3 DESC LIMIT 20
+    SELECT
+      c.oid,
+      reldatabase,
+      COUNT(*) AS buffers
+    FROM
+      pg_buffercache
+      JOIN pg_class c USING (relfilenode)
+    GROUP BY 1, 2
+    ORDER BY 3 DESC
+    LIMIT 20
+) bc
+JOIN pg_database d ON d.oid = bc.reldatabase
+ORDER BY buffers DESC
+;
