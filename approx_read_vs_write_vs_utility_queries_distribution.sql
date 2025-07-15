@@ -10,7 +10,7 @@ WITH q_stat_stmts AS (
   from
     pg_stat_statements
   where
-    not query ~* ANY(ARRAY['^BEGIN', '^COMMIT', '^END', '^ROLLBACK', '^SAVEPOINT', '^MOVE'])
+    not query ~* ANY(ARRAY['^BEGIN', '^START', '^COMMIT', '^END', '^ROLLBACK', '^SAVEPOINT', '^MOVE'])
     and calls > 10 -- only want regular / app stuff, might need an increase
 ),
 q_cmd_tag AS (
